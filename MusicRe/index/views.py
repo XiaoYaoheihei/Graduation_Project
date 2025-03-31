@@ -1,12 +1,16 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 
-from index.indexTag import GetRecTags
-from user.models import User, UserBrowse
-from user.views import all as allUsers, writeBrowse, getLocalTime
-from song.models import Song
-from sing.models import Sing
+from tagrec.views import GetRecTags
 from playlist.models import PlayList
+from playlist.views import getAllPlayList
+from song.models import Song
+from song.views import getAllSongs
+from sing.models import Sing
+from sing.views import getAllSings
+from user.models import User
+from user.views import getAllUsers, writeUserBrowse, getLocalTime
+from rec.views import rec_sim_playlist, rec_sim_song, rec_sim_sing, rec_sim_user
 
 # 用户选择登录
 def login(request):
@@ -33,11 +37,8 @@ def login(request):
         if not username:
             return JsonResponse({"code": 0, "error": "用户名不能为空"}, status=400)
         
-        # 记录用户点击信息，暂时先不支持
-        # try:
-        #     writeBrowse(user_name = username, user_click_time = getLocalTime(), desc = "登录系统")
-        # except Exception as e:
-        #     return JsonResponse({"code": 0, "error": "记录日志失败"}, status=500)
+        # 记录用户浏览信息
+        writeUserBrowse(user_name = username, user_click_time = getLocalTime(), desc = "登录系统")
         
         # 用户的选择信息存储到Session
         request.session["username"] = username
@@ -62,23 +63,40 @@ def home(request):
     if cate == "1":     # 为你推荐导航栏
         result = GetRecTags(request, request.GET.get("base_click"))
         return JsonResponse(result)
-    # elif cate == "2":   # 歌单
-    #     return JsonResponse( allPlayList(request) )
-    # elif cate == "3":   # 歌曲
-    #     return JsonResponse( allSongs(request) )
-    # elif cate == "4":   # 歌手
-    #     return JsonResponse( allSings(request) )
-    # elif cate == "5":   # 用户
-    #     return JsonResponse( allUsers(request) )
+    elif cate == "2":   # 歌单导航栏
+        return JsonResponse( getAllPlayList(request) )
+    elif cate == "3":   # 歌曲导航栏
+        return JsonResponse( getAllSongs(request) )
+    elif cate == "4":   # 歌导航栏
+        return JsonResponse( getAllSings(request) )
+    elif cate == "5":   # 用户导航栏
+        return JsonResponse( getAllUsers(request) )
     # elif cate == "6":  # 排行榜
     #     return JsonResponse( rankResult(request) )
     # elif cate == "7":  # 我的足迹
     #     return JsonResponse( myBrowse(request) )
     
 
-# 歌单、歌曲、歌手、用户 四个模块的推荐部分
+# 歌单、歌曲、歌手、用户 四个模块根据相似度推荐
 def rec(request):
-    return HttpResponse("Hello, world. You're at the polls index.")
+    cate = request.GET.get("cateid")
+    if "username" not in request.session.keys():
+        return JsonResponse({"code": 0, "data": {}})
+
+    if cate == "2":  # 推荐歌单信息
+        result = rec_sim_playlist(request)
+        return JsonResponse( result )
+    elif cate == "3": # 推荐歌曲
+        result = rec_sim_song(request)
+        return JsonResponse( result )
+    elif cate == "4": # 推荐歌手
+        result = rec_sim_sing(request)
+        return JsonResponse(result)
+    elif cate == "5": # 推荐用户
+        result = rec_sim_user(request)
+        return JsonResponse(result)
+    else:  # 其他
+        return JsonResponse({"code": 1, "data": {}})
 
 
 
@@ -91,7 +109,7 @@ def switchUser(request):
 def getCates(reuqest):
     return HttpResponse("Hello, world. You're at the polls index.")
 
-# 我的足迹（此功能暂定）
+# 我的足迹（此功能先不着急）
 def myBrowse(request):
     return HttpResponse("Hello, world. You're at the polls index.")
 
