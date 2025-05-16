@@ -93,11 +93,11 @@ export default {
         // 登录或跳过
         goLogin(skip) {
             var loginInfo = {
-                userName: this.loginUser,
+                username: this.loginUser,
                 sings: '',
                 songs: '',
                 cate: 1,
-                baseClick: 0
+                baseclick: 0
             }
             if (skip === "skip") {
                 alert("已跳过选择歌曲步骤，即将进入系统！");
@@ -117,11 +117,12 @@ export default {
 
             getLogin(loginInfo).then((res) => {
                 if (res.code) {
-                    localStorage.setItem('newslogintime', new Date())
+                    localStorage.setItem('username', res.data.username);
                     // this.almuta(true)
                     // this.almuuser(res.data.username)
-                    this.$router.push({
-                        path: '/',
+                    const redirectPath = this.$route.query.redirect || '/'; // 默认跳转到首页
+                    this.$router.replace({
+                        path: decodeURIComponent(redirectPath),
                         query: {
                             'username': res.data.username,
                             'sings': res.data.sings,

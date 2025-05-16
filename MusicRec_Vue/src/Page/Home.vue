@@ -1,7 +1,17 @@
 <template>
+    <!-- 导航栏 -->
+    <div class="nav-bar">
+      <div 
+        v-for="nav in navList" 
+        :key="nav.id" 
+        :class="['nav-item', { active: isActive === nav.id }]" 
+        @click="handleNavClick(nav.id)"
+      >
+        {{ nav.title }}
+      </div>
+    </div>
+
     <div class="recommonContain">
-        <!-- 与子组件的通信 -->
-        <mheader :active="isActive" @onGetNews="getCateMusic"></mheader>
         <!-- 为你推荐导航栏 -->
         <div v-if="isActive==1" class="mainContent">
             <div class="mainsign">
@@ -162,12 +172,42 @@
         </div>
 
 
-        <!-- 排行榜导航栏 -->
+        <!-- 音乐会导航栏 -->
         <div v-if="isActive==6" class="mainContent">
+            <div class="singCon singSongCon">
+                <h3>音乐会信息</h3>
+                <div class="allsign">
+                <ul class="relists">
+                    <li v-for="item in sings" :key="item.sing_id" class="relist singlists" @click="musicDesc(item.sing_id)">
+                        <img :src="item.sing_url"/>
+                        <p class="recreater"></p>
+                        <p class="rename">{{item.sing_name}}音乐会</p>
+                    </li>
+                </ul>
+                </div>
+            </div>
 
+            <div class="singCon singSong">
+                <h3>音乐会推荐</h3>
+                <ul class="relists">
+                <li v-for="item in recomm_sings" :key="item.sing_id" class="relist" @click="musicDesc(item.sing_id)">
+                    <img :src="item.sing_url"/>
+                    <p class="recreater"></p>
+                    <p class="rename">{{item.sing_name}}音乐会</p>
+                </li>
+                <!-- <li class="more" @click="getCateMusic({'cateid': '6','rectag': '3'})">更多 >></li> -->
+                </ul>
+            </div>
         </div>
 
+
+        <!-- 排行榜导航栏 -->
+        <!-- <div v-if="isActive==6" class="mainContent">
+
+        </div> -->
+
         <!-- 我的足迹导航栏 -->
+
 
     </div>
 </template>
@@ -178,12 +218,21 @@ import { getHomeCategoriesData, getRecommon } from '@/js/api'
 export default {
     data() {
         return { 
-            isActive: '1',
+            isActive: 1,
+            navList: [
+              { id: 1, title: "为你推荐" },
+              { id: 2, title: "歌单" },
+              { id: 3, title: "歌曲" },
+              { id: 4, title: "歌手" },
+              { id: 5, title: "用户" },
+              { id: 6, title: "音乐会"},
+            ],
             refresh: false, // 是否刷新（第一页激活）有搜索时需要
             playlist: {},
             song: {},
             sing: {},
-            // 推荐模块的信息
+            username: '',
+            // 为你推荐导航栏的信息
             tags: [],
             
             // 歌单导航栏
@@ -237,7 +286,7 @@ export default {
         // 从首页获取分类数据
         handleHomeCategory(option, request) {
             request.cateid = '1';
-            request.username = '';
+            request.username = this.username;
             if (option.sings) {
                 request.sings = option.sings;
                 request.songs = option.songs;
@@ -274,7 +323,7 @@ export default {
             request.baseclick = 1;
             request.tag = option.tag;
             request.page = option.page;
-            request.username = '';
+            request.username = this.username;
 
             // 获取推荐信息
             this.fetchRecommendations(cateId, request);
@@ -288,7 +337,7 @@ export default {
 
             // 发送通用数据请求
             getHomeCategoriesData(request).then(res => {
-                this.$layer.closeAll();
+                // this.$layer.closeAll();
                 this.processResponseData(res, cateId);
             }).catch(this.handleError);
 
@@ -304,7 +353,9 @@ export default {
                 getRecommon(recommendRequestData).then(res => {
                     if (res.code === 1) {
                         this.assignRecommendations(res.data, cateId);
-                    }
+                    } else if (res.code == -1) {
+                        console.log("后台还未导入相关数据，请求不成功")
+                    } 
                 });
             }
         },
@@ -316,14 +367,14 @@ export default {
                     this.recomm_playlists = data.recomm_playlists;
                     break;
                 case '3':
-                    res.data.songs.forEach(item => item.song_publish_time = this.timeFormat(item.song_publish_time));
-                    this.recomm_songs = res.data.songs;
+                    // res.data.songs.forEach(item => item.song_publish_time = this.timeFormat(item.song_publish_time));
+                    this.recomm_songs = data.songs;
                     break;
                 case '4':
-                    this.recomm_sings = res.data.sings;
+                    this.recomm_sings = data.sings;
                     break;
                 case '5':
-                    this.recomm_users = res.data.users;
+                    this.recomm_users = data.users;
                     break;
             }
         },
@@ -384,7 +435,8 @@ export default {
 
         // 分配歌曲数据（cateId=3）
         assignSongData(res) {
-            res.data.songs.forEach(item => item.song_publish_time = this.timeFormat(item.song_publish_time));
+            // 数据的时间格式处理
+            // res.data.songs.forEach(item => item.song_publish_time = this.timeFormat(item.song_publish_time));
             this.songs = res.data.songs;
             this.total = res.data.total;
         },
@@ -437,7 +489,7 @@ export default {
 
         // 统一错误处理
         handleError(err) {
-            this.$layer.msg('小主稍等，紧急恢复中。。。');
+            console.log("请求失败", err)
         },
 
         // 根据标签获取音乐
@@ -451,6 +503,7 @@ export default {
             } else {
                 this.tag = option
             }
+            console.log("get music from tag, isActive:%s tags:%s", this.isActive, this.tag)
             this.getCateMusic({
                 'cateid': this.isActive,
                 'tag': this.tag
@@ -477,9 +530,26 @@ export default {
                 }
             })
         },
-    },
+
+        handleNavClick(id) {
+          this.isActive = id;
+
+          // 重置标签选择（默认选中 "全部"）
+          this.tag = 'all';
+          this.tags = [];
+
+          // 根据导航栏 ID 调用数据接口
+          this.getCateMusic({
+            cateid: id.toString(),
+            tag: 'all',
+            page: 1,
+            baseclick: 1
+          });
+        },
+      },
 
     mounted () {
+        this.username = this.$route.query.username
         var sings = this.$route.query.sings
         var songs = this.$route.query.songs
         var baseClick = this.$route.query.baseClick
@@ -498,3 +568,297 @@ export default {
 }
 
 </script>
+
+<style lang="less" scoped>
+  @baseColor:#20a0ff;
+  #ellies(@n){
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: @n;
+    -webkit-box-orient: vertical;
+    white-space: nowrap;
+  }
+  .nav-bar {
+    display: flex;
+    gap: 20px;
+    padding: 10px;
+    background: #f5f5f5;
+  }
+
+  .nav-item {
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 4px;
+  }
+
+  .nav-item.active {
+    background: #409eff;
+    color: white;
+  }
+  .recommonContain{
+    width: 100%;
+    padding:2% 8%;
+    padding-bottom: 0;
+    box-sizing: border-box;
+    .mainContent{
+      width: 100%;
+      display: flex;
+      box-sizing: border-box;
+      justify-content: space-around;
+      .mainsign{
+        width: 32%;
+        box-sizing: border-box;
+        padding:10px;
+        border:1px solid #ddd;
+        margin:15px 30px;
+        box-shadow: 0 0 5px 5px #eee;
+        min-height: 300px;
+        .lists {
+          margin-top: 10px;
+          li {
+            padding: 6px 8px;
+            border-radius: 4px;
+            color: #333;
+            font-size: 16px;
+            width: auto;
+            display: inline-block;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            margin: 5px;
+          }
+          li:first-child{
+            color: orange;
+            border: 1px solid orange;
+          }
+          li:nth-child(2){
+            color: red;
+            border: 1px solid red;
+          }
+          li:nth-child(3){
+            color: coral;
+            border: 1px solid coral;
+          }
+          li:nth-child(4){
+            color: chocolate;
+            border: 1px solid chocolate;
+          }
+          li:hover {
+            color: @baseColor;
+            border: 1px solid @baseColor;
+          }
+        }
+        .musiclis{
+          li{
+            width: 100%;
+            box-sizing: border-box;
+            b{
+              img{
+                width: 50px;
+                height:50px;
+                border-radius: 25px;
+              }
+            }
+            span{
+              display: inline-block;
+              width: 30%;
+              #ellies(1);
+              vertical-align: middle;
+              font-size: 12px;
+            }
+            span:last-child{
+              font-size: 14px;
+              width: 43%;
+              float: right;
+              line-height: 50px;
+            }
+            span.songname{
+              font-size: 14px;
+              width: 50%;
+            }
+            span.songtime{
+              font-size: 12px;
+              width: 37%;
+            }
+            span.singer{
+              width: 65%;
+            }
+          }
+        }
+      }
+      .singlemainsign{
+        width: 100%;
+        .lists{
+          li{
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            .icon{
+              width: 140px;
+            }
+            span{
+              margin-left: 15px;
+            }
+          }
+          li:first-child{
+            color: #666;
+            border: none;
+          }
+          li:first-child:hover {
+            color: #666;
+            border: none;
+          }
+        }
+      }
+      .singCon{
+        box-sizing: border-box;
+        padding:10px;
+        border:1px solid #ddd;
+        box-shadow: 0 0 5px 5px #eee;
+        min-height: 500px;
+        margin-top:15px;
+        margin-bottom: 15px;
+        .signslists{
+          margin-top:10px;
+          li{
+            display: inline-block;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            padding: 6px;
+            border-radius: 4px;
+            margin:5px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            &:hover{
+              color: @baseColor;
+              border: 1px solid @baseColor;
+            }
+          }
+          .oktag{
+            color: @baseColor;
+            border: 1px solid @baseColor;
+          }
+          .moretag{
+            color: orange;
+            border: 1px solid orange;
+          }
+        }
+        .relists{
+          margin-top:20px;
+          display: flex;
+          justify-content: space-around;
+          flex-wrap: wrap;
+          .more{
+            padding: 5px;
+            border:1px solid orange;
+            color:#fff;
+            background: orange;
+            text-align: center;
+            width: 120px;
+            border-radius: 3px;
+            height: 30px;
+            line-height: 30px;
+            margin-top:15px;
+            cursor: pointer;
+          }
+          .relist{
+            width: 30%;
+            box-sizing: border-box;
+            padding: 5px;
+            color: #333;
+            cursor: pointer;
+            margin-bottom: 15px;
+            &:hover{
+              color: @baseColor;
+            }
+            .recreater{
+              font-size: 12px;
+              color: #666;
+              line-height: 14px;
+              margin-bottom: 5px;
+              margin-top: 5px;
+              #ellies(1)
+            }
+            .rename{
+              font-size: 14px;
+              line-height: 16px;
+              #ellies(1)
+            }
+            img{
+              width: 100%;
+            }
+          }
+          .singlists{
+            width: 20%;
+          }
+          .onelist{
+            width: 100%;
+            color:#666;
+            margin:5px 0;
+            display: flex;
+            justify-content: space-between;
+            cursor: pointer;
+            &:hover{
+              color:@baseColor;
+            }
+            .onetime,.onename{
+              #ellies(1);
+              display: inline-block;
+              box-sizing: border-box;
+              padding: 0 10px;
+            }
+          }
+        }
+      }
+      .singSongCon{
+        flex: 2;
+        margin-right: 15px;
+      }
+      .singSong{
+        flex: 1;
+        margin-left: 15px;
+        min-width: 30%;
+      }
+      .liscan{
+        width: 100%;
+        li{
+          width: 100%;
+          color: #666;
+          font-size: 14px;
+          display: block;
+          margin:20px;
+          span{
+            display: inline-block;
+            width: 40%;
+          }
+        }
+        li:first-child{
+          color: #000;
+        }
+      }
+      .recnav{
+        width: 10%;
+        min-width: 120px;
+        padding-left: 20px;
+        margin-top:20px;
+        box-sizing: border-box;
+        li{
+          width: 100%;
+          height: 30px;
+          box-sizing: border-box;
+          line-height: 30px;
+          padding-left: 20px;
+          color: #666;
+          cursor: pointer;
+        }
+        .active{
+          background: #eee;
+          box-shadow: 10px 0px 10px 1px @baseColor;
+        }
+      }
+    }
+    .rightpag{
+      width: 70%;
+    }
+  }
+</style>
